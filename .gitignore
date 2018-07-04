@@ -1,0 +1,10 @@
+*.files
+**.o
+tags
+*.out
+*.elf
+*.bin
+*.mak
+*.swp
+*.jar
+dependency.dep
