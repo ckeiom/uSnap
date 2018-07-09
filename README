@@ -30,7 +30,7 @@ To run uSnap enabled kernel,
 
 $ ./run.sh
 
-Test example
+Test an example
 
 (in uSnap kernel)
 # ./checkpoint ./loop
