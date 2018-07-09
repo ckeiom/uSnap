@@ -285,7 +285,7 @@ error:
 }
 EXPORT_SYMBOL(prepare_creds);
 
-struct cred *msnap_prepare_creds(struct task_struct *to_copy)
+struct cred *uSnap_prepare_creds(struct task_struct *to_copy)
 {
 	struct task_struct *task = to_copy;
 	const struct cred *old;
@@ -422,7 +422,7 @@ error_put:
 	put_cred(new);
 	return ret;
 }
-int msnap_copy_creds(struct task_struct *p, struct task_struct *to_copy)
+int uSnap_copy_creds(struct task_struct *p, struct task_struct *to_copy)
 {
 	struct cred *new;
 //	int ret;
@@ -443,7 +443,7 @@ int msnap_copy_creds(struct task_struct *p, struct task_struct *to_copy)
 		return 0;
 	}
 
-	new = msnap_prepare_creds(to_copy);
+	new = uSnap_prepare_creds(to_copy);
 	if (!new)
 		return -ENOMEM;
 

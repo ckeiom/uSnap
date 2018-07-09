@@ -83,7 +83,7 @@ static inline void mpol_cond_put(struct mempolicy *pol)
 }
 
 extern struct mempolicy *__mpol_dup(struct mempolicy *pol);
-extern struct mempolicy *__msnap_mpol_dup(struct mempolicy *pol, struct task_struct *to_copy);
+extern struct mempolicy *__uSnap_mpol_dup(struct mempolicy *pol, struct task_struct *to_copy);
 static inline struct mempolicy *mpol_dup(struct mempolicy *pol)
 {
 	if (pol)
@@ -91,10 +91,10 @@ static inline struct mempolicy *mpol_dup(struct mempolicy *pol)
 	return pol;
 }
 
-static inline struct mempolicy *msnap_mpol_dup(struct mempolicy *pol, struct task_struct *to_copy)
+static inline struct mempolicy *uSnap_mpol_dup(struct mempolicy *pol, struct task_struct *to_copy)
 {
 	if (pol)
-		pol = __msnap_mpol_dup(pol, to_copy);
+		pol = __uSnap_mpol_dup(pol, to_copy);
 	return pol;
 }
 #define vma_policy(vma) ((vma)->vm_policy)

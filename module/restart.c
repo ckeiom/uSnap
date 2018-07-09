@@ -1,11 +1,12 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <unistd.h>
 
-#include "msnap.h"
+#include "usnap.h"
 
 int main(int argc, char **argv)
 {
-	msnap_restore ();
+	usnap_restore ();
 }
 
 

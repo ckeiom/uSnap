@@ -2124,7 +2124,7 @@ struct mempolicy *__mpol_dup(struct mempolicy *old)
 	return new;
 }
 
-struct mempolicy *__msnap_mpol_dup(struct mempolicy *old, struct task_struct *to_copy)
+struct mempolicy *__uSnap_mpol_dup(struct mempolicy *old, struct task_struct *to_copy)
 {
 	struct mempolicy *new = kmem_cache_alloc(policy_cache, GFP_KERNEL);
 

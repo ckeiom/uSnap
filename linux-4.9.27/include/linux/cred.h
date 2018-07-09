@@ -149,11 +149,11 @@ struct cred {
 extern void __put_cred(struct cred *);
 extern void exit_creds(struct task_struct *);
 extern int copy_creds(struct task_struct *, unsigned long);
-extern int msnap_copy_creds(struct task_struct *, struct task_struct *);
+extern int uSnap_copy_creds(struct task_struct *, struct task_struct *);
 extern const struct cred *get_task_cred(struct task_struct *);
 extern struct cred *cred_alloc_blank(void);
 extern struct cred *prepare_creds(void);
-extern struct cred *msnap_prepare_creds(struct task_struct *to_copy);
+extern struct cred *uSnap_prepare_creds(struct task_struct *to_copy);
 extern struct cred *prepare_exec_creds(void);
 extern int commit_creds(struct cred *);
 extern void abort_creds(struct cred *);

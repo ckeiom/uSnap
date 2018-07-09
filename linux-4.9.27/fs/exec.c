@@ -57,7 +57,7 @@
 #include <linux/oom.h>
 #include <linux/compat.h>
 #include <linux/vmalloc.h>
-#include <linux/msnap.h>
+#include <linux/uSnap.h>
 
 #include <asm/uaccess.h>
 #include <asm/mmu_context.h>
@@ -1769,9 +1769,9 @@ static int do_execveat_common(int fd, struct filename *filename,
 
 	/* execve succeeded */
 
-	if( is_msnap_target(current) )
+	if(is_uSnap_target(current))
 	{
-		printk(KERN_INFO"Msnap] Caught! %d\n", current->pid);
+		printk(KERN_INFO"uSnap] Caught! %d\n", current->pid);
 	}
 	current->fs->in_exec = 0;
 	current->in_execve = 0;

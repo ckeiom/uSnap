@@ -4,10 +4,10 @@ uSnap is Checkpoint / restart manager in kernel level,
 thus kernel modification follows. Our current modification
 is done in linux-4.9.27, mostly in kernel/usnap.c.
 
-msnap directory has some programs which make possible to 
-checkpoin / restart programs by users.
+"module" directory has some programs which make possible to 
+checkpoint / restart programs by users.
 
-test directory has programs which we can or should checkpoint.
+"test" directory has programs which we can or should checkpoint.
 
 
 --------------------- How to ----------------------
@@ -22,6 +22,17 @@ If you want to mount this image and add some files into this,
 
 $ ./mount.sh
 
-=== Adding / removing files ===
+~ Adding / removing files ~
 
 $ ./umount.sh
+
+To run uSnap enabled kernel,
+
+$ ./run.sh
+
+Test example
+
+(in uSnap kernel)
+# ./checkpoint ./loop
+
+# ./restart

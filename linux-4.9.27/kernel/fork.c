@@ -76,7 +76,7 @@
 #include <linux/compiler.h>
 #include <linux/sysctl.h>
 #include <linux/kcov.h>
-#include <linux/msnap.h>
+#include <linux/uSnap.h>
 
 #include <asm/pgtable.h>
 #include <asm/pgalloc.h>
@@ -1153,7 +1153,7 @@ free_pt:
 fail_nomem:
 	return NULL;
 }
-static struct mm_struct *msnap_dup_mm(struct task_struct *tsk, struct task_struct *to_copy)
+static struct mm_struct *uSnap_dup_mm(struct task_struct *tsk, struct task_struct *to_copy)
 {
 	struct mm_struct *mm, *oldmm = to_copy->mm;
 	int err;
@@ -1233,7 +1233,7 @@ fail_nomem:
 	return retval;
 }
 
-static int msnap_copy_mm(struct task_struct *tsk, struct task_struct *to_copy)
+static int uSnap_copy_mm(struct task_struct *tsk, struct task_struct *to_copy)
 {
 	struct mm_struct *mm, *oldmm;
 	int retval;
@@ -1268,7 +1268,7 @@ static int msnap_copy_mm(struct task_struct *tsk, struct task_struct *to_copy)
 	*/
 
 	retval = -ENOMEM;
-	mm = msnap_dup_mm(tsk, to_copy);
+	mm = uSnap_dup_mm(tsk, to_copy);
 	if (!mm)
 		goto fail_nomem;
 
@@ -1299,7 +1299,7 @@ static int copy_fs(unsigned long clone_flags, struct task_struct *tsk)
 	return 0;
 }
 
-static int msnap_copy_fs(struct task_struct *tsk, struct task_struct *to_copy)
+static int uSnap_copy_fs(struct task_struct *tsk, struct task_struct *to_copy)
 {
 	struct fs_struct *fs = to_copy->fs;
 	
@@ -1336,7 +1336,7 @@ out:
 	return error;
 }
 
-static int msnap_copy_files(struct task_struct *tsk, struct task_struct *to_copy)
+static int uSnap_copy_files(struct task_struct *tsk, struct task_struct *to_copy)
 {
 	struct files_struct *oldf, *newf;
 	int error = 0;
@@ -1389,7 +1389,7 @@ static int copy_io(unsigned long clone_flags, struct task_struct *tsk)
 #endif
 	return 0;
 }
-static int msnap_copy_io(struct task_struct *tsk, struct task_struct *to_copy)
+static int uSnap_copy_io(struct task_struct *tsk, struct task_struct *to_copy)
 {
 #ifdef CONFIG_BLOCK
 	struct io_context *ioc = to_copy->io_context;
@@ -1435,7 +1435,7 @@ static int copy_sighand(unsigned long clone_flags, struct task_struct *tsk)
 	return 0;
 }
 
-static int msnap_copy_sighand(struct task_struct *tsk, struct task_struct *to_copy)
+static int uSnap_copy_sighand(struct task_struct *tsk, struct task_struct *to_copy)
 {
 	struct sighand_struct *sig;
 
@@ -1534,7 +1534,7 @@ static int copy_signal(unsigned long clone_flags, struct task_struct *tsk)
 
 	return 0;
 }
-static int msnap_copy_signal(struct task_struct *tsk, struct task_struct *to_copy)
+static int uSnap_copy_signal(struct task_struct *tsk, struct task_struct *to_copy)
 {
 	struct signal_struct *sig;
 
@@ -1613,7 +1613,7 @@ static void copy_seccomp(struct task_struct *p)
 #endif
 }
 
-static void msnap_copy_seccomp(struct task_struct *p, struct task_struct *to_copy)
+static void uSnap_copy_seccomp(struct task_struct *p, struct task_struct *to_copy)
 {
 #ifdef CONFIG_SECCOMP
 	/*
@@ -2574,7 +2574,7 @@ int sysctl_max_threads(struct ctl_table *table, int write,
 	return 0;
 }
 
-struct task_struct* msnap_dup_task(struct task_struct *to_copy)
+struct task_struct* uSnap_dup_task(struct task_struct *to_copy)
 {
 	struct task_struct *new;
 	struct pid* pid;
@@ -2586,7 +2586,7 @@ struct task_struct* msnap_dup_task(struct task_struct *to_copy)
 
 	if(!new)
 	{
-		printk(KERN_ALERT"Msnap] Dup task Error\n");
+		printk(KERN_ALERT"uSnap] Dup task Error\n");
 		return NULL;
 	}
 
@@ -2599,11 +2599,11 @@ struct task_struct* msnap_dup_task(struct task_struct *to_copy)
 #endif
 
 	printk(KERN_INFO"copy_creds\n");
-	ret = msnap_copy_creds(new, to_copy);
+	ret = uSnap_copy_creds(new, to_copy);
 
 	if( ret < 0 )
 	{
-		printk(KERN_ALERT"Msnap] Copy creds Error\n");
+		printk(KERN_ALERT"uSnap] Copy creds Error\n");
 		return NULL;
 	}
 
@@ -2644,11 +2644,11 @@ struct task_struct* msnap_dup_task(struct task_struct *to_copy)
 
 #ifdef CONFIG_NUMA
 	printk(KERN_INFO"mpol_dup\n");
-	new->mempolicy = msnap_mpol_dup(new->mempolicy, to_copy);
+	new->mempolicy = uSnap_mpol_dup(new->mempolicy, to_copy);
 
 	if( IS_ERR(new->mempolicy) )
 	{
-		printk(KERN_ALERT"Msnap] mpol dup Error\n");
+		printk(KERN_ALERT"uSnap] mpol dup Error\n");
 		return NULL;
 	}
 #endif
@@ -2699,7 +2699,7 @@ struct task_struct* msnap_dup_task(struct task_struct *to_copy)
 
 	if( ret )
 	{
-		printk(KERN_ALERT"Msnap] sched fork Error\n");
+		printk(KERN_ALERT"uSnap] sched fork Error\n");
 		return NULL;
 	}
 
@@ -2708,7 +2708,7 @@ struct task_struct* msnap_dup_task(struct task_struct *to_copy)
 
 	if( ret )
 	{
-		printk(KERN_ALERT"Msnap] perf event init Error\n");
+		printk(KERN_ALERT"uSnap] perf event init Error\n");
 		return NULL;
 	}
 	
@@ -2718,81 +2718,81 @@ struct task_struct* msnap_dup_task(struct task_struct *to_copy)
 
 	if( ret )
 	{
-		printk(KERN_ALERT"Msnap] audit alloc Error\n");
+		printk(KERN_ALERT"uSnap] audit alloc Error\n");
 		return NULL;
 	}
 
 	shm_init_task(new);
 
-	ret = msnap_copy_semundo(new, to_copy);
+	ret = uSnap_copy_semundo(new, to_copy);
 
 	if( ret )
 	{
-		printk(KERN_ALERT"Msnap] copy semundo Error\n");
+		printk(KERN_ALERT"uSnap] copy semundo Error\n");
 		return NULL;
 	}
 
-	ret = msnap_copy_files(new, to_copy);
+	ret = uSnap_copy_files(new, to_copy);
 
 	if( ret )
 	{
-		printk(KERN_ALERT"Msnap] copy files Error\n");
+		printk(KERN_ALERT"uSnap] copy files Error\n");
 		return NULL;
 	}
 
-	ret = msnap_copy_fs(new, to_copy);
+	ret = uSnap_copy_fs(new, to_copy);
 
 	if( ret )
 	{
-		printk(KERN_ALERT"Msnap] copy fs Error\n");
+		printk(KERN_ALERT"uSnap] copy fs Error\n");
 		return NULL;
 	}
 
-	ret = msnap_copy_sighand( new, to_copy);
+	ret = uSnap_copy_sighand( new, to_copy);
 
 	if( ret )
 	{
-		printk(KERN_ALERT"Msnap] copy sighand Error\n");
+		printk(KERN_ALERT"uSnap] copy sighand Error\n");
 		return NULL;
 	}
 
-	ret = msnap_copy_signal(new, to_copy);
+	ret = uSnap_copy_signal(new, to_copy);
 
 	if( ret )
 	{
-		printk(KERN_ALERT"Msnap] copy signal ERror\n");
+		printk(KERN_ALERT"uSnap] copy signal ERror\n");
 		return NULL;
 	}
 
-	ret = msnap_copy_mm(new, to_copy);
+	ret = uSnap_copy_mm(new, to_copy);
 
 	if( ret )
 	{
-		printk(KERN_ALERT"Msnap] copy mm Error\n");
+		printk(KERN_ALERT"uSnap] copy mm Error\n");
 		return NULL;
 	}
 
-	ret = msnap_copy_namespaces(new, to_copy);
+	ret = uSnap_copy_namespaces(new, to_copy);
 
 	if( ret )
 	{
-		printk(KERN_ALERT"Msnap] copy namespaces Error\n");
+		printk(KERN_ALERT"uSnap] copy namespaces Error\n");
 		return NULL;
 	}
 
-	ret = msnap_copy_io(new, to_copy);
+	ret = uSnap_copy_io(new, to_copy);
 
 	if( ret )
 	{
-		printk(KERN_ALERT"Msnap] copy io Error\n");
+		printk(KERN_ALERT"uSnap] copy io Error\n");
 		return NULL;
 	}
 
-	ret = msnap_copy_thread_tls(0,0, new,0, to_copy);
+	ret = uSnap_copy_thread_tls(0,0, new,0, to_copy);
 
 	if( ret )
 	{
-		printk(KERN_ALERT"Msnap] copy thread tls Error\n");
+		printk(KERN_ALERT"uSnap] copy thread tls Error\n");
 		return NULL;
 	}
 
@@ -2800,7 +2800,7 @@ struct task_struct* msnap_dup_task(struct task_struct *to_copy)
 
 	if( IS_ERR(pid) )
 	{
-		printk(KERN_ALERT"Msnap] alloc pid Error\n");
+		printk(KERN_ALERT"uSnap] alloc pid Error\n");
 		return NULL;
 	}
 
@@ -2855,7 +2855,7 @@ struct task_struct* msnap_dup_task(struct task_struct *to_copy)
 
 	spin_lock(&to_copy->sighand->siglock);
 
-	msnap_copy_seccomp(new, to_copy);
+	uSnap_copy_seccomp(new, to_copy);
 
 	recalc_sigpending();
 

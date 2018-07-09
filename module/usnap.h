@@ -1,16 +1,16 @@
 #include <stdlib.h>
 
-void msnap_init(pid_t id)
+void usnap_init(pid_t id)
 {
 	syscall(332, id);
 }
 
-int msnap_store()
+int usnap_store()
 {
 	return syscall(333);
 }
 
-int msnap_restore()
+int usnap_restore()
 {
 	return syscall(334);
 }

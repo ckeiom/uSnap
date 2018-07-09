@@ -1,7 +1,9 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <unistd.h>
+#include <sys/types.h>
 
-#include "msnap.h"
+#include "usnap.h"
 
 int main(int argc, char **argv)
 {
@@ -11,15 +13,15 @@ int main(int argc, char **argv)
 	{
 		/* Designated program as a child */
 		new_sid = setsid (); // Nominate designated process as group leader
-		msnap_init (new_sid); // To inform kernel pgid of designated program
-		execvp (argv[1], &argv[1], NULL);
+		usnap_init (new_sid); // To inform kernel pgid of designated program
+		execvp (argv[1], &argv[1]);
 		printf("Exec failed %s\n", argv[1]);
 	}
 	else
 	{
 		/* Monitor program */
 		sleep (2); // Give target program enough time to exec()
-		msnap_store ();
+		usnap_store ();
 	}
 	return 0;
 }

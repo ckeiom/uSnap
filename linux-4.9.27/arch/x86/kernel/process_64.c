@@ -211,7 +211,7 @@ out:
 	return err;
 }
 
-int msnap_copy_thread_tls(unsigned long sp,
+int uSnap_copy_thread_tls(unsigned long sp,
 		unsigned long arg, struct task_struct *p, unsigned long tls, struct task_struct *to_copy)
 {
 	int err;

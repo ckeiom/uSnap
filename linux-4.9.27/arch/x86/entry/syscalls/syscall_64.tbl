@@ -338,9 +338,9 @@
 329	common	pkey_mprotect		sys_pkey_mprotect
 330	common	pkey_alloc		sys_pkey_alloc
 331	common	pkey_free		sys_pkey_free
-332 common	msnap_init		sys_msnap_init
-333 common	msnap_store		sys_msnap_store
-334 common	msnap_restore	sys_msnap_restore
+332 common	uSnap_init		sys_uSnap_init
+333 common	uSnap_store		sys_uSnap_store
+334 common	uSnap_restore	sys_uSnap_restore
 #
 # x32-specific system call numbers start at 512 to avoid cache impact
 # for native 64-bit operation.

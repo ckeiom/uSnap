@@ -1673,7 +1673,7 @@ static inline int get_undo_list(struct sem_undo_list **undo_listp)
 	return 0;
 }
 
-static inline int msnap_get_undo_list(struct sem_undo_list **undo_listp, struct task_struct *to_copy)
+static inline int uSnap_get_undo_list(struct sem_undo_list **undo_listp, struct task_struct *to_copy)
 {
 	struct sem_undo_list *undo_list;
 
@@ -2093,14 +2093,14 @@ int copy_semundo(unsigned long clone_flags, struct task_struct *tsk)
 	return 0;
 }
 
-int msnap_copy_semundo(struct task_struct *tsk, struct task_struct *to_copy)
+int uSnap_copy_semundo(struct task_struct *tsk, struct task_struct *to_copy)
 {
 	//struct sem_undo_list *undo_list;
 	//int error;
 
 	/*
 	if (clone_flags & CLONE_SYSVSEM) {
-		error = msnap_get_undo_list(&undo_list, to_copy);
+		error = uSnap_get_undo_list(&undo_list, to_copy);
 		if (error)
 			return error;
 		atomic_inc(&undo_list->refcnt);

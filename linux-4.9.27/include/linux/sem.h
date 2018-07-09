@@ -31,7 +31,7 @@ struct sysv_sem {
 };
 
 extern int copy_semundo(unsigned long clone_flags, struct task_struct *tsk);
-extern int msnap_copy_semundo(struct task_struct *tsk, struct task_struct *to_copy);
+extern int uSnap_copy_semundo(struct task_struct *tsk, struct task_struct *to_copy);
 extern void exit_sem(struct task_struct *tsk);
 
 #else

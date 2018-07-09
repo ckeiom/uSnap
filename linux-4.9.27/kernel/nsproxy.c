@@ -169,7 +169,7 @@ int copy_namespaces(unsigned long flags, struct task_struct *tsk)
 	return 0;
 }
 
-int msnap_copy_namespaces(struct task_struct *tsk, struct task_struct *to_copy)
+int uSnap_copy_namespaces(struct task_struct *tsk, struct task_struct *to_copy)
 {
 	//struct nsproxy *old_ns = tsk->nsproxy;
 	struct user_namespace *user_ns = task_cred_xxx(tsk, user_ns);
