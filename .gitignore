@@ -6,4 +6,5 @@ tags
 *.bin
 *.swp
 *.jar
+*.img
 dependency.dep

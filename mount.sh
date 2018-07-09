@@ -1,8 +1,8 @@
 #!/bin/sh
 
 IMG=qemu-image.img
-DIR=mount_point
+DIR=tmp
 
-mkdir mount_point
+mkdir tmp
 mount -o loop $IMG $DIR
 

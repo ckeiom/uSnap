@@ -1,6 +1,6 @@
 #!/bin/sh
 
-DIR=mount_point
+DIR=tmp
 
 umount $DIR
-rm -rf $DIR
+rmdir $DIR
