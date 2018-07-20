@@ -169,44 +169,6 @@ int copy_namespaces(unsigned long flags, struct task_struct *tsk)
 	return 0;
 }
 
-int uSnap_copy_namespaces(struct task_struct *tsk, struct task_struct *to_copy)
-{
-	//struct nsproxy *old_ns = tsk->nsproxy;
-	struct user_namespace *user_ns = task_cred_xxx(tsk, user_ns);
-	struct nsproxy *new_ns;
-
-	/*
-	if (likely(!(flags & (CLONE_NEWNS | CLONE_NEWUTS | CLONE_NEWIPC |
-			      CLONE_NEWPID | CLONE_NEWNET |
-			      CLONE_NEWCGROUP)))) {
-		get_nsproxy(old_ns);
-		return 0;
-	}
-	*/
-	if (!ns_capable(user_ns, CAP_SYS_ADMIN))
-		return -EPERM;
-
-	/*
-	 * CLONE_NEWIPC must detach from the undolist: after switching
-	 * to a new ipc namespace, the semaphore arrays from the old
-	 * namespace are unreachable.  In clone parlance, CLONE_SYSVSEM
-	 * means share undolist with parent, so we must forbid using
-	 * it along with CLONE_NEWIPC.
-	 */
-
-	/*
-	if ((flags & (CLONE_NEWIPC | CLONE_SYSVSEM)) ==
-		(CLONE_NEWIPC | CLONE_SYSVSEM)) 
-		return -EINVAL;
-	*/
-
-	new_ns = create_new_namespaces(0, tsk, user_ns, tsk->fs);
-	if (IS_ERR(new_ns))
-		return  PTR_ERR(new_ns);
-
-	tsk->nsproxy = new_ns;
-	return 0;
-}
 void free_nsproxy(struct nsproxy *ns)
 {
 	if (ns->mnt_ns)

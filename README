@@ -2,7 +2,7 @@ README
 
 uSnap is Checkpoint / restart manager in kernel level,
 thus kernel modification follows. Our current modification
-is done in linux-4.9.27, mostly in files whose prefix is "uSnap_" throughout kernel.
+is done in linux-4.9.27, mostly in kernel/usnap.c.
 
 "module" directory has some programs which make possible to 
 checkpoint / restart programs by users.

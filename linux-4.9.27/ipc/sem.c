@@ -1673,24 +1673,7 @@ static inline int get_undo_list(struct sem_undo_list **undo_listp)
 	return 0;
 }
 
-static inline int uSnap_get_undo_list(struct sem_undo_list **undo_listp, struct task_struct *to_copy)
-{
-	struct sem_undo_list *undo_list;
 
-	undo_list = to_copy->sysvsem.undo_list;
-	if (!undo_list) {
-		undo_list = kzalloc(sizeof(*undo_list), GFP_KERNEL);
-		if (undo_list == NULL)
-			return -ENOMEM;
-		spin_lock_init(&undo_list->lock);
-		atomic_set(&undo_list->refcnt, 1);
-		INIT_LIST_HEAD(&undo_list->list_proc);
-
-		to_copy->sysvsem.undo_list = undo_list;
-	}
-	*undo_listp = undo_list;
-	return 0;
-}
 static struct sem_undo *__lookup_undo(struct sem_undo_list *ulp, int semid)
 {
 	struct sem_undo *un;
@@ -2093,23 +2076,7 @@ int copy_semundo(unsigned long clone_flags, struct task_struct *tsk)
 	return 0;
 }
 
-int uSnap_copy_semundo(struct task_struct *tsk, struct task_struct *to_copy)
-{
-	//struct sem_undo_list *undo_list;
-	//int error;
 
-	/*
-	if (clone_flags & CLONE_SYSVSEM) {
-		error = uSnap_get_undo_list(&undo_list, to_copy);
-		if (error)
-			return error;
-		atomic_inc(&undo_list->refcnt);
-		tsk->sysvsem.undo_list = undo_list;
-	} else */
-		tsk->sysvsem.undo_list = NULL;
-
-	return 0;
-}
 /*
  * add semadj values to semaphores, free undo structures.
  * undo structures are not freed when semaphore arrays are destroyed

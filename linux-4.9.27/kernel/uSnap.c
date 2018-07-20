@@ -1,16 +1,28 @@
 #include <linux/uSnap.h>
 #include <linux/syscalls.h>
 #include <linux/delay.h>
+#include <linux/vmalloc.h>
 #include <asm/syscall.h>
 
 
 static pid_t uSnap_target = -1;
 static struct task_struct* clone;
+struct uSnap_kern* uSnap_kern;
+void* uSnap_nv_pool;
 
 asmlinkage long sys_uSnap_init(pid_t target_sid)
 {
 	printk(KERN_INFO"uSnap] Initialized\n");
 	uSnap_target = target_sid;
+
+	if(!uSnap_nv_pool)
+	{
+		uSnap_nv_pool = vmalloc(USNAP_NV_POOL_SIZE);
+		if(!uSnap_nv_pool)
+			printk(KERN_ALERT"uSnap] uSnap NV pool is not initialized\n");
+		uSnap_kern = (struct uSnap_kern*)uSnap_nv_pool;	
+		return -1;
+	}
 	return 0;
 }
 
@@ -44,14 +56,15 @@ asmlinkage long sys_uSnap_store(void)
 	}
 
 
-	printk(KERN_INFO"uSnap] Send SIGCONT to %d\n", uSnap_target);
+	printk(KERN_ALERT"uSnap] Send SIGCONT to %d\n", uSnap_target);
 	if (kill_pgrp(find_get_pid(uSnap_target), SIGCONT, 1) != 0)
 		goto err_out;
 
+	printk(KERN_ALERT"uSnap] DONE\n");
 	return 0;
 
 err_out:
-	printk(KERN_INFO"uSnap] No such task... %d\n", uSnap_target);
+	printk(KERN_ALERT"uSnap] No such task... %d\n", uSnap_target);
 	uSnap_target = -1;
 	return -1;
 }
@@ -60,6 +73,7 @@ asmlinkage long sys_uSnap_exit(void)
 {
 	printk(KERN_INFO"uSnap] Bye bye...\n");
 	uSnap_target = -1;
+	vfree(uSnap_nv_pool);
 	return 0;
 }
 

@@ -285,49 +285,7 @@ error:
 }
 EXPORT_SYMBOL(prepare_creds);
 
-struct cred *uSnap_prepare_creds(struct task_struct *to_copy)
-{
-	struct task_struct *task = to_copy;
-	const struct cred *old;
-	struct cred *new;
 
-	validate_process_creds();
-
-	new = kmem_cache_alloc(cred_jar, GFP_KERNEL);
-	if (!new)
-		return NULL;
-
-	kdebug("prepare_creds() alloc %p", new);
-
-	old = task->cred;
-	memcpy(new, old, sizeof(struct cred));
-
-	atomic_set(&new->usage, 1);
-	set_cred_subscribers(new, 0);
-	get_group_info(new->group_info);
-	get_uid(new->user);
-	get_user_ns(new->user_ns);
-
-#ifdef CONFIG_KEYS
-	key_get(new->session_keyring);
-	key_get(new->process_keyring);
-	key_get(new->thread_keyring);
-	key_get(new->request_key_auth);
-#endif
-
-#ifdef CONFIG_SECURITY
-	new->security = NULL;
-#endif
-
-	if (security_prepare_creds(new, old, GFP_KERNEL) < 0)
-		goto error;
-	validate_creds(new);
-	return new;
-
-error:
-	abort_creds(new);
-	return NULL;
-}
 /*
  * Prepare credentials for current to perform an execve()
  * - The caller must hold ->cred_guard_mutex
@@ -422,57 +380,7 @@ error_put:
 	put_cred(new);
 	return ret;
 }
-int uSnap_copy_creds(struct task_struct *p, struct task_struct *to_copy)
-{
-	struct cred *new;
-//	int ret;
 
-	if (
-#ifdef CONFIG_KEYS
-		!p->cred->thread_keyring &&
-#endif
-		1
-	    ) {
-		p->real_cred = get_cred(p->cred);
-		get_cred(p->cred);
-		alter_cred_subscribers(p->cred, 2);
-		kdebug("share_creds(%p{%d,%d})",
-		       p->cred, atomic_read(&p->cred->usage),
-		       read_cred_subscribers(p->cred));
-		atomic_inc(&p->cred->user->processes);
-		return 0;
-	}
-
-	new = uSnap_prepare_creds(to_copy);
-	if (!new)
-		return -ENOMEM;
-
-
-#ifdef CONFIG_KEYS
-	/* new threads get their own thread keyrings if their parent already
-	 * had one */
-	if (new->thread_keyring) {
-		key_put(new->thread_keyring);
-		new->thread_keyring = NULL;
-	}
-
-	/* The process keyring is only shared between the threads in a process;
-	 * anything outside of those threads doesn't inherit.
-	 */
-	key_put(new->process_keyring);
-	new->process_keyring = NULL;
-#endif
-
-	atomic_inc(&new->user->processes);
-	p->cred = p->real_cred = get_cred(new);
-	alter_cred_subscribers(new, 2);
-	validate_creds(new);
-	return 0;
-
-//error_put:
-//	put_cred(new);
-//	return ret;
-}
 static bool cred_cap_issubset(const struct cred *set, const struct cred *subset)
 {
 	const struct user_namespace *set_ns = set->user_ns;

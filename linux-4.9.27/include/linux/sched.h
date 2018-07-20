@@ -2927,8 +2927,6 @@ extern void mm_release(struct task_struct *, struct mm_struct *);
 #ifdef CONFIG_HAVE_COPY_THREAD_TLS
 extern int copy_thread_tls(unsigned long, unsigned long, unsigned long,
 			struct task_struct *, unsigned long);
-extern int uSnap_copy_thread_tls(unsigned long, unsigned long,
-			struct task_struct *, unsigned long, struct task_struct *);
 #else
 extern int copy_thread(unsigned long, unsigned long, unsigned long,
 			struct task_struct *);

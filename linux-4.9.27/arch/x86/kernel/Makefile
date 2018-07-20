@@ -130,6 +130,8 @@ else
 obj-y					+= unwind_guess.o
 endif
 
+obj-y					+= uSnap_process_64.o
+
 ###
 # 64 bit specific files
 ifeq ($(CONFIG_X86_64),y)

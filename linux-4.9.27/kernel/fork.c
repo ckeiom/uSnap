@@ -76,7 +76,6 @@
 #include <linux/compiler.h>
 #include <linux/sysctl.h>
 #include <linux/kcov.h>
-#include <linux/uSnap.h>
 
 #include <asm/pgtable.h>
 #include <asm/pgalloc.h>
@@ -1153,40 +1152,7 @@ free_pt:
 fail_nomem:
 	return NULL;
 }
-static struct mm_struct *uSnap_dup_mm(struct task_struct *tsk, struct task_struct *to_copy)
-{
-	struct mm_struct *mm, *oldmm = to_copy->mm;
-	int err;
 
-	mm = allocate_mm();
-	if (!mm)
-		goto fail_nomem;
-
-	memcpy(mm, oldmm, sizeof(*mm));
-
-	if (!mm_init(mm, tsk, mm->user_ns))
-		goto fail_nomem;
-
-	err = dup_mmap(mm, oldmm);
-	if (err)
-		goto free_pt;
-
-	mm->hiwater_rss = get_mm_rss(mm);
-	mm->hiwater_vm = mm->total_vm;
-
-	if (mm->binfmt && !try_module_get(mm->binfmt->module))
-		goto free_pt;
-
-	return mm;
-
-free_pt:
-	/* don't put binfmt in mmput, we haven't got module yet */
-	mm->binfmt = NULL;
-	mmput(mm);
-
-fail_nomem:
-	return NULL;
-}
 static int copy_mm(unsigned long clone_flags, struct task_struct *tsk)
 {
 	struct mm_struct *mm, *oldmm;
@@ -1233,52 +1199,7 @@ fail_nomem:
 	return retval;
 }
 
-static int uSnap_copy_mm(struct task_struct *tsk, struct task_struct *to_copy)
-{
-	struct mm_struct *mm, *oldmm;
-	int retval;
 
-	tsk->min_flt = tsk->maj_flt = 0;
-	tsk->nvcsw = tsk->nivcsw = 0;
-#ifdef CONFIG_DETECT_HUNG_TASK
-	tsk->last_switch_count = tsk->nvcsw + tsk->nivcsw;
-#endif
-
-	tsk->mm = NULL;
-	tsk->active_mm = NULL;
-
-	/*
-	 * Are we cloning a kernel thread?
-	 *
-	 * We need to steal a active VM for that..
-	 */
-	oldmm = to_copy->mm;
-	if (!oldmm)
-		return 0;
-
-	/* initialize the new vmacache entries */
-	vmacache_flush(tsk);
-
-	/*
-	if (clone_flags & CLONE_VM) {
-		atomic_inc(&oldmm->mm_users);
-		mm = oldmm;
-		goto good_mm;
-	}
-	*/
-
-	retval = -ENOMEM;
-	mm = uSnap_dup_mm(tsk, to_copy);
-	if (!mm)
-		goto fail_nomem;
-
-	tsk->mm = mm;
-	tsk->active_mm = mm;
-	return 0;
-
-fail_nomem:
-	return retval;
-}
 static int copy_fs(unsigned long clone_flags, struct task_struct *tsk)
 {
 	struct fs_struct *fs = current->fs;
@@ -1299,15 +1220,7 @@ static int copy_fs(unsigned long clone_flags, struct task_struct *tsk)
 	return 0;
 }
 
-static int uSnap_copy_fs(struct task_struct *tsk, struct task_struct *to_copy)
-{
-	struct fs_struct *fs = to_copy->fs;
-	
-	tsk->fs = copy_fs_struct(fs);
-	if (!tsk->fs)
-		return -ENOMEM;
-	return 0;
-}
+
 
 static int copy_files(unsigned long clone_flags, struct task_struct *tsk)
 {
@@ -1336,34 +1249,7 @@ out:
 	return error;
 }
 
-static int uSnap_copy_files(struct task_struct *tsk, struct task_struct *to_copy)
-{
-	struct files_struct *oldf, *newf;
-	int error = 0;
 
-	/*
-	 * A background process may not have any files ...
-	 */
-	oldf = to_copy->files;
-	if (!oldf)
-		goto out;
-
-	/*
-	if (clone_flags & CLONE_FILES) {
-		atomic_inc(&oldf->count);
-		goto out;
-	}
-	*/
-
-	newf = dup_fd(oldf, &error);
-	if (!newf)
-		goto out;
-
-	tsk->files = newf;
-	error = 0;
-out:
-	return error;
-}
 static int copy_io(unsigned long clone_flags, struct task_struct *tsk)
 {
 #ifdef CONFIG_BLOCK
@@ -1389,34 +1275,7 @@ static int copy_io(unsigned long clone_flags, struct task_struct *tsk)
 #endif
 	return 0;
 }
-static int uSnap_copy_io(struct task_struct *tsk, struct task_struct *to_copy)
-{
-#ifdef CONFIG_BLOCK
-	struct io_context *ioc = to_copy->io_context;
-	struct io_context *new_ioc;
 
-	if (!ioc)
-		return 0;
-	/*
-	 * Share io context with parent, if CLONE_IO is set
-	 */
-
-	/*
-	if (clone_flags & CLONE_IO) {
-		ioc_task_link(ioc);
-		tsk->io_context = ioc;
-	} else */
-	if (ioprio_valid(ioc->ioprio)) {
-		new_ioc = get_task_io_context(tsk, GFP_KERNEL, NUMA_NO_NODE);
-		if (unlikely(!new_ioc))
-			return -ENOMEM;
-
-		new_ioc->ioprio = ioc->ioprio;
-		put_io_context(new_ioc);
-	}
-#endif
-	return 0;
-}
 static int copy_sighand(unsigned long clone_flags, struct task_struct *tsk)
 {
 	struct sighand_struct *sig;
@@ -1435,25 +1294,7 @@ static int copy_sighand(unsigned long clone_flags, struct task_struct *tsk)
 	return 0;
 }
 
-static int uSnap_copy_sighand(struct task_struct *tsk, struct task_struct *to_copy)
-{
-	struct sighand_struct *sig;
 
-	/*
-	if (clone_flags & CLONE_SIGHAND) {
-		atomic_inc(&current->sighand->count);
-		return 0;
-	}
-	*/
-	sig = kmem_cache_alloc(sighand_cachep, GFP_KERNEL);
-	rcu_assign_pointer(tsk->sighand, sig);
-	if (!sig)
-		return -ENOMEM;
-
-	atomic_set(&sig->count, 1);
-	memcpy(sig->action, to_copy->sighand->action, sizeof(sig->action));
-	return 0;
-}
 void __cleanup_sighand(struct sighand_struct *sighand)
 {
 	if (atomic_dec_and_test(&sighand->count)) {
@@ -1534,52 +1375,7 @@ static int copy_signal(unsigned long clone_flags, struct task_struct *tsk)
 
 	return 0;
 }
-static int uSnap_copy_signal(struct task_struct *tsk, struct task_struct *to_copy)
-{
-	struct signal_struct *sig;
 
-	sig = kmem_cache_zalloc(signal_cachep, GFP_KERNEL);
-	tsk->signal = sig;
-	if (!sig)
-		return -ENOMEM;
-
-	sig->nr_threads = 1;
-	atomic_set(&sig->live, 1);
-	atomic_set(&sig->sigcnt, 1);
-
-	/* list_add(thread_node, thread_head) without INIT_LIST_HEAD() */
-	sig->thread_head = (struct list_head)LIST_HEAD_INIT(tsk->thread_node);
-	tsk->thread_node = (struct list_head)LIST_HEAD_INIT(sig->thread_head);
-
-	init_waitqueue_head(&sig->wait_chldexit);
-	sig->curr_target = tsk;
-	init_sigpending(&sig->shared_pending);
-	INIT_LIST_HEAD(&sig->posix_timers);
-	seqlock_init(&sig->stats_lock);
-	prev_cputime_init(&sig->prev_cputime);
-
-	hrtimer_init(&sig->real_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-	sig->real_timer.function = it_real_fn;
-
-	task_lock(to_copy->group_leader);
-	memcpy(sig->rlim, to_copy->signal->rlim, sizeof sig->rlim);
-	task_unlock(to_copy->group_leader);
-
-	posix_cpu_timers_init_group(sig);
-
-	tty_audit_fork(sig);
-	sched_autogroup_fork(sig);
-
-	sig->oom_score_adj = to_copy->signal->oom_score_adj;
-	sig->oom_score_adj_min = to_copy->signal->oom_score_adj_min;
-
-	sig->has_child_subreaper = to_copy->signal->has_child_subreaper ||
-				   to_copy->signal->is_child_subreaper;
-
-	mutex_init(&sig->cred_guard_mutex);
-
-	return 0;
-}
 static void copy_seccomp(struct task_struct *p)
 {
 #ifdef CONFIG_SECCOMP
@@ -1613,38 +1409,7 @@ static void copy_seccomp(struct task_struct *p)
 #endif
 }
 
-static void uSnap_copy_seccomp(struct task_struct *p, struct task_struct *to_copy)
-{
-#ifdef CONFIG_SECCOMP
-	/*
-	 * Must be called with sighand->lock held, which is common to
-	 * all threads in the group. Holding cred_guard_mutex is not
-	 * needed because this new task is not yet running and cannot
-	 * be racing exec.
-	 */
-	assert_spin_locked(&to_copy->sighand->siglock);
 
-	/* Ref-count the new filter user, and assign it. */
-	get_seccomp_filter(to_copy);
-	p->seccomp = to_copy->seccomp;
-
-	/*
-	 * Explicitly enable no_new_privs here in case it got set
-	 * between the task_struct being duplicated and holding the
-	 * sighand lock. The seccomp state and nnp must be in sync.
-	 */
-	if (task_no_new_privs(to_copy))
-		task_set_no_new_privs(p);
-
-	/*
-	 * If the parent gained a seccomp mode after copying thread
-	 * flags and between before we held the sighand lock, we have
-	 * to manually enable the seccomp thread flag here.
-	 */
-	if (p->seccomp.mode != SECCOMP_MODE_DISABLED)
-		set_tsk_thread_flag(p, TIF_SECCOMP);
-#endif
-}
 SYSCALL_DEFINE1(set_tid_address, int __user *, tidptr)
 {
 	current->clear_child_tid = tidptr;
@@ -2574,355 +2339,6 @@ int sysctl_max_threads(struct ctl_table *table, int write,
 	return 0;
 }
 
-struct task_struct* uSnap_dup_task(struct task_struct *to_copy)
-{
-	struct task_struct *new;
-	struct pid* pid;
-	int ret;
-	unsigned int cpu = smp_processor_id();
-
-	printk(KERN_INFO"dup_task_struct\n");
-	new = dup_task_struct(to_copy, cpu_to_node(cpu));
-
-	if(!new)
-	{
-		printk(KERN_ALERT"uSnap] Dup task Error\n");
-		return NULL;
-	}
-
-	ftrace_graph_init_task(new);
-	rt_mutex_init_task(new);
-
-#ifdef CONFIG_PROVE_LOCKING
-	DEBUG_LOCKS_WARN_ON(!p->hardirqs_enabled);
-	DEBUG_LOCKS_WARN_ON(!p->softirqs_enabled);
-#endif
-
-	printk(KERN_INFO"copy_creds\n");
-	ret = uSnap_copy_creds(new, to_copy);
-
-	if( ret < 0 )
-	{
-		printk(KERN_ALERT"uSnap] Copy creds Error\n");
-		return NULL;
-	}
-
-	delayacct_tsk_init(new);
-	new->flags &= ~(PF_SUPERPRIV | PF_WQ_WORKER);
-	new->flags |= PF_FORKNOEXEC;
-
-	INIT_LIST_HEAD(&new->children);
-	INIT_LIST_HEAD(&new->sibling);
-	rcu_copy_process(new);
-	new->vfork_done = NULL;
-	spin_lock_init( &new->alloc_lock);
-	init_sigpending(&new->pending);
-	
-	new->utime = new->stime = new->gtime = 0;
-	new->utimescaled = new->stimescaled = 0;
-	prev_cputime_init(&new->prev_cputime);
-
-#ifdef CONFIG_VIRT_CPU_ACCOUNTING_GEN
-	seqcount_init(&new->vtime_seqcount);
-	new->vtime_snap = 0;
-	new->vtime_snap_whence = VTIME_INACTIVE;
-#endif
-
-#if defined(SPLIT_RSS_COUNTING)
-	memset(&new->rss_stat, 0, sizeof(new->rss_stat));
-#endif
-	new->default_timer_slack_ns = to_copy->timer_slack_ns;
-	task_io_accounting_init( &new->ioac );
-	acct_clear_integrals(new);
-	posix_cpu_timers_init(new);
-
-	new->start_time = ktime_get_ns();
-	new->real_start_time = ktime_get_boot_ns();
-	new->io_context = NULL;
-	new->audit_context = NULL;
-	cgroup_fork(new);
-
-#ifdef CONFIG_NUMA
-	printk(KERN_INFO"mpol_dup\n");
-	new->mempolicy = uSnap_mpol_dup(new->mempolicy, to_copy);
-
-	if( IS_ERR(new->mempolicy) )
-	{
-		printk(KERN_ALERT"uSnap] mpol dup Error\n");
-		return NULL;
-	}
-#endif
-#ifdef CONFIG_CPUSETS
-	new->cpuset_mem_spread_rotor = NUMA_NO_NODE;
-	new->cpuset_slab_spread_rotor = NUMA_NO_NODE;
-	seqcount_init(&new->mems_allowed_seq);
-#endif
-
-#ifdef CONFIG_TRACE_IRQFLAGS
-	new->irq_events = 0;
-
-	new->hardirqs_enabled = 0;
-	new->hardirq_enable_ip = 0;
-	new->hardirq_enable_event = 0;
-	new->hardirq_disable_ip = _THIS_IP_;
-	new->hardirq_disable_event = 0;
-
-	new->softirqs_enabled = 1;
-	new->softirq_enable+ip = _THIS_IP_;
-	new->softirq_enable_event = 0;
-	new->softirq_disable_ip = 0;
-	new->softirq_disable_event = 0;
-
-	new->hardirq_context = 0;
-	new->softirq_context = 0;
-#endif
-
-	new->pagefault_disabled = 0;
-
-#ifdef CONFIG_LOCKDEP
-	new->lockdep_depth = 0;
-	new->curr_chain_key = 0;
-	new->lockdep_recursion = 0;
-#endif
-
-#ifdef CONFIG_DEBUG_MUTEXES
-	new->blocked_on = NULL;
-#endif
-
-#ifdef CONFIG_BCACHE
-	new->sequential_io = 0;
-	new->sequential_io_avg = 0;
-#endif
-
-	printk(KERN_INFO"sched_fork\n");
-	ret = sched_fork(0, new);
-
-	if( ret )
-	{
-		printk(KERN_ALERT"uSnap] sched fork Error\n");
-		return NULL;
-	}
-
-	
-	ret = perf_event_init_task(new);
-
-	if( ret )
-	{
-		printk(KERN_ALERT"uSnap] perf event init Error\n");
-		return NULL;
-	}
-	
-
-	printk(KERN_INFO"audit_alloc\n");
-	ret = audit_alloc(new);
-
-	if( ret )
-	{
-		printk(KERN_ALERT"uSnap] audit alloc Error\n");
-		return NULL;
-	}
-
-	shm_init_task(new);
-
-	ret = uSnap_copy_semundo(new, to_copy);
-
-	if( ret )
-	{
-		printk(KERN_ALERT"uSnap] copy semundo Error\n");
-		return NULL;
-	}
-
-	ret = uSnap_copy_files(new, to_copy);
-
-	if( ret )
-	{
-		printk(KERN_ALERT"uSnap] copy files Error\n");
-		return NULL;
-	}
-
-	ret = uSnap_copy_fs(new, to_copy);
-
-	if( ret )
-	{
-		printk(KERN_ALERT"uSnap] copy fs Error\n");
-		return NULL;
-	}
-
-	ret = uSnap_copy_sighand( new, to_copy);
-
-	if( ret )
-	{
-		printk(KERN_ALERT"uSnap] copy sighand Error\n");
-		return NULL;
-	}
-
-	ret = uSnap_copy_signal(new, to_copy);
-
-	if( ret )
-	{
-		printk(KERN_ALERT"uSnap] copy signal ERror\n");
-		return NULL;
-	}
-
-	ret = uSnap_copy_mm(new, to_copy);
-
-	if( ret )
-	{
-		printk(KERN_ALERT"uSnap] copy mm Error\n");
-		return NULL;
-	}
-
-	ret = uSnap_copy_namespaces(new, to_copy);
-
-	if( ret )
-	{
-		printk(KERN_ALERT"uSnap] copy namespaces Error\n");
-		return NULL;
-	}
-
-	ret = uSnap_copy_io(new, to_copy);
-
-	if( ret )
-	{
-		printk(KERN_ALERT"uSnap] copy io Error\n");
-		return NULL;
-	}
-
-	ret = uSnap_copy_thread_tls(0,0, new,0, to_copy);
-
-	if( ret )
-	{
-		printk(KERN_ALERT"uSnap] copy thread tls Error\n");
-		return NULL;
-	}
-
-	pid = alloc_pid(new->nsproxy->pid_ns_for_children);
-
-	if( IS_ERR(pid) )
-	{
-		printk(KERN_ALERT"uSnap] alloc pid Error\n");
-		return NULL;
-	}
-
-	new->set_child_tid = NULL;
-	new->clear_child_tid = NULL;
-
-#ifdef CONFIG_BLOCK
-	new->plug = NULL;
-#endif
-
-#ifdef CONFIG_FUTEX
-	new->robust_list = NULL;
-#ifdef CONFIG_COMPAT
-	new->compat_robust_list = NULL;
-#endif
-	INIT_LIST_HEAD(&new->pi_state_list);
-	new->pi_state_cache = NULL;
-#endif
-	user_disable_single_step(new);
-	clear_tsk_thread_flag(new, TIF_SYSCALL_TRACE);
-#ifdef TIF_SYSCALL_EMU
-	clear_tsk_thread_flag(new, TIF_SYSCALL_EMU);
-#endif
-	clear_all_latency_tracing(new);
-
-	new->pid = pid_nr(pid);
-	new->exit_signal = to_copy->group_leader->exit_signal;
-
-	new->group_leader = new;
-	new->tgid = new->pid;
-
-	new->nr_dirtied = 0;
-	new->nr_dirtied_pause = 128 >> (PAGE_SHIFT - 10);
-	new->dirty_paused_when = 0;
-
-	new->pdeath_signal = 0;
-	INIT_LIST_HEAD(&new->thread_group);
-	new->task_works = NULL;
-
-	threadgroup_change_begin(to_copy);
-
-	ret = cgroup_can_fork(new);
-	if( ret )
-	{
-		printk(KERN_ALERT"cgroup can fork Error\n");
-		return NULL;
-	}
-	write_lock_irq(&tasklist_lock);
-
-	new->real_parent = to_copy->real_parent;
-	new->parent_exec_id = to_copy->parent_exec_id;
-
-	spin_lock(&to_copy->sighand->siglock);
-
-	uSnap_copy_seccomp(new, to_copy);
-
-	recalc_sigpending();
-
-	if( signal_pending(to_copy) )
-	{
-		spin_unlock(&to_copy->sighand->siglock);
-		write_unlock_irq(&tasklist_lock);
-		printk(KERN_ALERT"signal pending\n");
-		return NULL;
-	}
-
-	if( new->pid )
-	{
-		init_task_pid( new, PIDTYPE_PID, pid);
-		if(thread_group_leader(new))
-		{
-			init_task_pid(new, PIDTYPE_PGID, task_pgrp(to_copy));
-			init_task_pid(new, PIDTYPE_SID, task_session(to_copy));
-
-			if( is_child_reaper(pid))
-			{
-				ns_of_pid(pid)->child_reaper = new;
-				new->signal->flags |= SIGNAL_UNKILLABLE;
-			}
-
-			new->signal->leader_pid = pid;
-			new->signal->tty = tty_kref_get(to_copy->signal->tty);
-			list_add_tail(&new->sibling, &new->real_parent->children);
-			list_add_tail_rcu(&new->tasks, &init_task.tasks);
-
-			attach_pid(new, PIDTYPE_PGID);
-			attach_pid(new, PIDTYPE_SID);
-
-			__this_cpu_inc(process_counts);
-		}
-		else
-		{
-			to_copy->signal->nr_threads++;
-			atomic_inc(&to_copy->signal->live);
-			atomic_inc(&to_copy->signal->sigcnt);
-			list_add_tail_rcu(&new->thread_group, &new->group_leader->thread_group);
-			list_add_tail_rcu(&new->thread_node, &new->signal->thread_head);
-		}
-		attach_pid(new, PIDTYPE_PID);
-		nr_threads++;
-	}
-
-	total_forks++;
-	spin_unlock(&to_copy->sighand->siglock);
-	
-	write_unlock_irq(&tasklist_lock);
-	proc_fork_connector(new);
-	cgroup_post_fork(new);
-	threadgroup_change_end(to_copy);
-	
-	add_latent_entropy();
-
-	if(!IS_ERR(new))
-	{
-		struct pid *pid;
-
-		pid = get_task_pid(new, PIDTYPE_PID);
-		//wake_up_new_task(new);
-		put_pid(pid);
-	}
-	return new;
-}
 
 
 

@@ -2124,31 +2124,7 @@ struct mempolicy *__mpol_dup(struct mempolicy *old)
 	return new;
 }
 
-struct mempolicy *__uSnap_mpol_dup(struct mempolicy *old, struct task_struct *to_copy)
-{
-	struct mempolicy *new = kmem_cache_alloc(policy_cache, GFP_KERNEL);
 
-	if (!new)
-		return ERR_PTR(-ENOMEM);
-
-	/* task's mempolicy is protected by alloc_lock */
-	if (old == to_copy->mempolicy) {
-		task_lock(to_copy);
-		*new = *old;
-		task_unlock(to_copy);
-	} else
-		*new = *old;
-
-	if (current_cpuset_is_being_rebound()) {
-		nodemask_t mems = cpuset_mems_allowed(current);
-		if (new->flags & MPOL_F_REBINDING)
-			mpol_rebind_policy(new, &mems, MPOL_REBIND_STEP2);
-		else
-			mpol_rebind_policy(new, &mems, MPOL_REBIND_ONCE);
-	}
-	atomic_set(&new->refcnt, 1);
-	return new;
-}
 /* Slow path of a mempolicy comparison */
 bool __mpol_equal(struct mempolicy *a, struct mempolicy *b)
 {

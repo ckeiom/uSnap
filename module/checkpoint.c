@@ -22,6 +22,7 @@ int main(int argc, char **argv)
 		/* Monitor program */
 		sleep (2); // Give target program enough time to exec()
 		usnap_store ();
+		while(1);
 	}
 	return 0;
 }
