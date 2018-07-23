@@ -903,7 +903,7 @@ asmlinkage long sys_pkey_mprotect(unsigned long start, size_t len,
 asmlinkage long sys_pkey_alloc(unsigned long flags, unsigned long init_val);
 asmlinkage long sys_pkey_free(int pkey);
 
-asmlinkage long sys_uSnap_init(pid_t target_sid);
+asmlinkage long sys_uSnap_init(pid_t target_sid, int mode);
 asmlinkage long sys_uSnap_store(void);
 asmlinkage long sys_uSnap_restore(void);
 #endif

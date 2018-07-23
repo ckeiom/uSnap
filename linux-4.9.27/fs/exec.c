@@ -1771,7 +1771,13 @@ static int do_execveat_common(int fd, struct filename *filename,
 
 	if(is_uSnap_target(current))
 	{
-		printk(KERN_INFO"uSnap] Caught! %d\n", current->pid);
+		if(uSnap_mode & USNAP_MODE_RESTART)
+		{
+			printk(KERN_ALERT"uSnap] Restart %d\n", current->pid);
+			uSnap_restore_task();
+		}
+		if(uSnap_mode & USNAP_MODE_CHECKPOINT)
+			printk(KERN_ALERT"uSnap] Checkpoint %d\n", current->pid);
 	}
 	current->fs->in_exec = 0;
 	current->in_execve = 0;

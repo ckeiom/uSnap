@@ -11,11 +11,16 @@
 #include <linux/fs_struct.h>
 #include <linux/iocontext.h>
 #include <linux/mm_types.h>
+#include <linux/vmalloc.h>
 
+#define USNAP_MODE_CHECKPOINT	1
+#define USNAP_MODE_RESTART		2
 #define USNAP_NV_POOL_SIZE	20 * 1024 * 1024
 #define USNAP_MAX_ANON_VMA	20
 struct uSnap_kern
 {
+	int pid;
+
 	struct cred cred;
 	struct nsproxy nsproxy;
 	struct mempolicy mempolicy;
@@ -30,14 +35,17 @@ struct uSnap_kern
 	struct signal_struct signal_struct;
 	struct task_struct task_struct;
 	char stack[THREAD_SIZE];
+	struct vm_struct stack_vm_area;
 
 };
 
 extern struct uSnap_kern* uSnap_kern;
 extern void* uSnap_nv_pool;
+extern int uSnap_mode;
 
 int is_uSnap_target(struct task_struct *t);
-extern struct task_struct* uSnap_dup_task(struct task_struct *t);
+extern int uSnap_store_task(struct task_struct *t);
+extern int uSnap_restore_task(void);
 
 int uSnap_copy_creds(struct task_struct *p, struct task_struct *to_copy);
 int uSnap_copy_namespaces(struct task_struct *p, struct task_struct *to_copy);

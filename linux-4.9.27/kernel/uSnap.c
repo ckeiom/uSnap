@@ -5,15 +5,16 @@
 #include <asm/syscall.h>
 
 
+int uSnap_mode;
 static pid_t uSnap_target = -1;
-static struct task_struct* clone;
 struct uSnap_kern* uSnap_kern;
 void* uSnap_nv_pool;
 
-asmlinkage long sys_uSnap_init(pid_t target_sid)
+asmlinkage long sys_uSnap_init(pid_t target_sid, int mode)
 {
 	printk(KERN_INFO"uSnap] Initialized\n");
 	uSnap_target = target_sid;
+	uSnap_mode = mode;
 
 	if(!uSnap_nv_pool)
 	{
@@ -29,6 +30,7 @@ asmlinkage long sys_uSnap_init(pid_t target_sid)
 asmlinkage long sys_uSnap_store(void)
 {
 	struct task_struct *t;
+	int ret;
 
 	if(uSnap_target < 0)
 		return -1;
@@ -47,9 +49,8 @@ asmlinkage long sys_uSnap_store(void)
 				//printk(KERN_INFO"Msnap] Target still running\n");
 				schedule();
 			}
-			clone = uSnap_dup_task(t);
-
-			if(!clone)
+			ret = uSnap_store_task(t);
+			if(ret < 0)
 				goto err_out;
 			break;
 		}
@@ -80,7 +81,7 @@ asmlinkage long sys_uSnap_exit(void)
 asmlinkage long sys_uSnap_restore(void)
 {
 	printk(KERN_INFO"uSnap] Wake up\n");
-	wake_up_new_task(clone);
+	//wake_up_new_task(clone);
 	return 0;
 }
 int is_uSnap_target(struct task_struct *t)

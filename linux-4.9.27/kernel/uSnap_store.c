@@ -539,7 +539,7 @@ static struct task_struct *uSnap_dup_task_struct(struct task_struct *orig, int n
 
 	stack = (unsigned long*)uSnap_kern->stack;
 
-	stack_vm_area = task_stack_vm_area(tsk);
+	//stack_vm_area = task_stack_vm_area(tsk);
 
 	err = arch_dup_task_struct(tsk, orig);
 
@@ -550,6 +550,7 @@ static struct task_struct *uSnap_dup_task_struct(struct task_struct *orig, int n
 	 */
 	tsk->stack = stack;
 #ifdef CONFIG_VMAP_STACK
+	stack_vm_area = &uSnap_kern->stack_vm_area;
 	tsk->stack_vm_area = stack_vm_area;
 #endif
 #ifdef CONFIG_THREAD_INFO_IN_TASK
@@ -570,12 +571,13 @@ static struct task_struct *uSnap_dup_task_struct(struct task_struct *orig, int n
 #endif
 
 	setup_thread_stack(tsk, orig);
-	clear_user_return_notifier(tsk);
-	clear_tsk_need_resched(tsk);
+//	clear_user_return_notifier(tsk);
+//	clear_tsk_need_resched(tsk);
 	set_task_stack_end_magic(tsk);
 
 #ifdef CONFIG_CC_STACKPROTECTOR
-	tsk->stack_canary = get_random_int();
+//	tsk->stack_canary = get_random_int();
+	tsk->stack_canary = 0; // modified
 #endif
 
 	/*
@@ -623,20 +625,26 @@ uSnap_init_task_pid(struct task_struct *task, enum pid_type type, struct pid *pi
 	 task->pids[type].pid = pid;
 }
 
-struct task_struct* uSnap_dup_task(struct task_struct *to_copy)
+static void uSnap_store_pid(struct task_struct *to_copy)
+{
+	uSnap_kern->pid = to_copy->pid;
+	uSnap_kern->task_struct.pid = to_copy->pid;
+	uSnap_kern->task_struct.tgid = to_copy->tgid;
+}
+
+int uSnap_store_task(struct task_struct *to_copy)
 {
 	struct task_struct *new;
 	struct pid* pid;
 	int ret;
-	unsigned int cpu = smp_processor_id();
 
-	printk(KERN_ALERT"dup_task_struct\n");
+	uSnap_store_pid(to_copy);
+#if 0
 	new = uSnap_dup_task_struct(to_copy, cpu_to_node(cpu));
-
 	if(!new)
 	{
 		printk(KERN_ALERT"uSnap] Dup task Error\n");
-		return NULL;
+		return -1;
 	}
 
 	ftrace_graph_init_task(new);
@@ -653,7 +661,7 @@ struct task_struct* uSnap_dup_task(struct task_struct *to_copy)
 	if( ret < 0 )
 	{
 		printk(KERN_ALERT"uSnap] Copy creds Error\n");
-		return NULL;
+		return -1;
 	}
 
 	delayacct_tsk_init(new);
@@ -698,7 +706,7 @@ struct task_struct* uSnap_dup_task(struct task_struct *to_copy)
 	if( IS_ERR(new->mempolicy) )
 	{
 		printk(KERN_ALERT"uSnap] mpol dup Error\n");
-		return NULL;
+		return -1;
 	}
 #endif
 #ifdef CONFIG_CPUSETS
@@ -749,7 +757,7 @@ struct task_struct* uSnap_dup_task(struct task_struct *to_copy)
 	if( ret )
 	{
 		printk(KERN_ALERT"uSnap] sched fork Error\n");
-		return NULL;
+		return -1;
 	}
 
 	
@@ -759,7 +767,7 @@ struct task_struct* uSnap_dup_task(struct task_struct *to_copy)
 	if( ret )
 	{
 		printk(KERN_ALERT"uSnap] perf event init Error\n");
-		return NULL;
+		return -1;
 	}
 	
 
@@ -769,7 +777,7 @@ struct task_struct* uSnap_dup_task(struct task_struct *to_copy)
 	if( ret )
 	{
 		printk(KERN_ALERT"uSnap] audit alloc Error\n");
-		return NULL;
+		return -1;
 	}
 
 	printk(KERN_ALERT"shm_init_task\n");
@@ -781,7 +789,7 @@ struct task_struct* uSnap_dup_task(struct task_struct *to_copy)
 	if( ret )
 	{
 		printk(KERN_ALERT"uSnap] copy semundo Error\n");
-		return NULL;
+		return -1;
 	}
 
 	printk(KERN_ALERT"copy_files\n");
@@ -790,7 +798,7 @@ struct task_struct* uSnap_dup_task(struct task_struct *to_copy)
 	if( ret )
 	{
 		printk(KERN_ALERT"uSnap] copy files Error\n");
-		return NULL;
+		return -1;
 	}
 
 	printk(KERN_ALERT"copy_fs\n");
@@ -799,7 +807,7 @@ struct task_struct* uSnap_dup_task(struct task_struct *to_copy)
 	if( ret )
 	{
 		printk(KERN_ALERT"uSnap] copy fs Error\n");
-		return NULL;
+		return -1;
 	}
 
 	printk(KERN_ALERT"copy_sighand\n");
@@ -808,7 +816,7 @@ struct task_struct* uSnap_dup_task(struct task_struct *to_copy)
 	if( ret )
 	{
 		printk(KERN_ALERT"uSnap] copy sighand Error\n");
-		return NULL;
+		return -1;
 	}
 
 	printk(KERN_ALERT"copy_signal\n");
@@ -817,7 +825,7 @@ struct task_struct* uSnap_dup_task(struct task_struct *to_copy)
 	if( ret )
 	{
 		printk(KERN_ALERT"uSnap] copy signal ERror\n");
-		return NULL;
+		return -1;
 	}
 
 	printk(KERN_ALERT"copy_mm\n");
@@ -826,7 +834,7 @@ struct task_struct* uSnap_dup_task(struct task_struct *to_copy)
 	if( ret )
 	{
 		printk(KERN_ALERT"uSnap] copy mm Error\n");
-		return NULL;
+		return -1;
 	}
 
 	printk(KERN_ALERT"copy_namespaces\n");
@@ -835,7 +843,7 @@ struct task_struct* uSnap_dup_task(struct task_struct *to_copy)
 	if( ret )
 	{
 		printk(KERN_ALERT"uSnap] copy namespaces Error\n");
-		return NULL;
+		return -1;
 	}
 
 	printk(KERN_ALERT"copy_io\n");
@@ -844,7 +852,7 @@ struct task_struct* uSnap_dup_task(struct task_struct *to_copy)
 	if( ret )
 	{
 		printk(KERN_ALERT"uSnap] copy io Error\n");
-		return NULL;
+		return -1;
 	}
 
 	printk(KERN_ALERT"copy_thread_tls\n");
@@ -853,7 +861,7 @@ struct task_struct* uSnap_dup_task(struct task_struct *to_copy)
 	if( ret )
 	{
 		printk(KERN_ALERT"uSnap] copy thread tls Error\n");
-		return NULL;
+		return -1;
 	}
 
 	printk(KERN_ALERT"alloc_pid\n");
@@ -862,7 +870,7 @@ struct task_struct* uSnap_dup_task(struct task_struct *to_copy)
 	if( IS_ERR(pid) )
 	{
 		printk(KERN_ALERT"uSnap] alloc pid Error\n");
-		return NULL;
+		return -1;
 	}
 
 	new->set_child_tid = NULL;
@@ -908,7 +916,7 @@ struct task_struct* uSnap_dup_task(struct task_struct *to_copy)
 	if( ret )
 	{
 		printk(KERN_ALERT"cgroup can fork Error\n");
-		return NULL;
+		return -1;
 	}
 	write_lock_irq(&tasklist_lock);
 
@@ -927,7 +935,7 @@ struct task_struct* uSnap_dup_task(struct task_struct *to_copy)
 		spin_unlock(&to_copy->sighand->siglock);
 		write_unlock_irq(&tasklist_lock);
 		printk(KERN_ALERT"signal pending\n");
-		return NULL;
+		return -1;
 	}
 
 	printk(KERN_ALERT"init_task_pid\n");
@@ -985,6 +993,7 @@ struct task_struct* uSnap_dup_task(struct task_struct *to_copy)
 		//wake_up_new_task(new);
 		put_pid(pid);
 	}
-	return new;
+#endif
+	return 0;
 }
 
